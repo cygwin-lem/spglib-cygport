@@ -1,0 +1,114 @@
+################################
+inherit cmake ninja
+
+################################
+NAME=spglib
+VERSION=1.16.0
+RELEASE=1
+
+################################
+CATEGORY="Science Libs"
+SUMMARY="A library for finding and handling crystal symmetries written in C"
+DESCRIPTION="\
+Spglib is a library for finding and handling crystal symmetries written in C."
+HOMEPAGE="https://spglib.github.io/spglib/"
+
+################################
+## Source from a git repository
+################################
+GIT_REPO="https://github.com/spglib/spglib"
+declare -A GIT_DATEHASH_BY_NAME=(
+  # git log --date=iso-strict --format='%cd/%H' -1 v1.16.0
+  [1.16.0p4]=2020-09-10T09:24:37+09:00/348acc363d987b1368f52ee2fd399e84f5273cd5
+  [1.16.0]=2020-07-31T00:32:44+09:00/ee34712a9f7fe228e100b8ec1080d8f206309e2a
+)
+REV_HASH="${GIT_DATEHASH_BY_NAME[${VERSION}]#*/}"
+REV_DATE="${GIT_DATEHASH_BY_NAME[${VERSION}]%/*}"
+REV_DATE_SHORT="${GIT_DATEHASH_BY_NAME[${VERSION}]%T*}"
+GIT_BASENAME="${GIT_REPO##*/}"
+SRC_URI="${GIT_REPO}/archive/${REV_HASH}.tar.gz"   # GitHub
+#SRC_URI="${GIT_REPO}/-/archive/${REV_HASH}/${GIT_BASENAME}-${REV_HASH}.tar.bz2" # GitLab
+SRC_DIR="${GIT_BASENAME}-${REV_HASH}"
+
+################################
+## ABI for libsymspg
+ABI=1
+################################
+
+################################
+## Requirements for building
+################################
+BUILD_REQUIRES="\
+  cmake\
+  ninja\
+"
+
+################################
+## Patch files
+################################
+# Patch filenames are in a default style of 'git format-patch'
+PATCH_URI=$(\
+  find -maxdepth 1 -type f -name '[0-9][0-9][0-9][0-9]-*.patch' \
+  | sort \
+)
+# Additional patches, if any
+PATCH_URI+="
+"
+
+################################
+## Settings for CMake
+################################
+#CYGCMAKE_GENERATOR="Unix Makefiles"
+CYGCMAKE_ARGS="
+  -DCYGWIN:BOOL=ON
+  -DBUILD_SHARED_LIBS:BOOL=ON
+"
+
+################################
+src_compile() {
+	cd ${B}
+	: ${CYGCMAKE_GENERATOR=Ninja}
+	cygcmake
+	if [ -f build.ninja ]
+	then
+		cygninja
+	else
+		cygmake
+	fi
+}
+
+################################
+## Contents of our packages
+LIB_NAME=symspg
+
+################################
+# Runtime libraries
+THIS_PN="lib${LIB_NAME}${ABI}"
+THIS_VN=${THIS_PN//[-+\.]/_}
+PKG_NAMES+=" ${THIS_PN}"
+
+printf -v "${THIS_VN}_CATEGORY" "%s" "${CATEGORY}"
+printf -v "${THIS_VN}_SUMMARY"  "%s" "${SUMMARY% *} (runtime)"
+printf -v "${THIS_VN}_CONTENTS" "%s" "\
+  usr/bin/*.dll\
+"
+printf -v "${THIS_VN}_REQUIRES" "%s" "\
+"
+
+################################
+# Devel
+THIS_PN="lib${LIB_NAME}-devel"
+THIS_VN=${THIS_PN//[-+\.]/_}
+PKG_NAMES+=" ${THIS_PN}"
+
+printf -v "${THIS_VN}_CATEGORY" "%s" "Devel ${CATEGORY}"
+printf -v "${THIS_VN}_SUMMARY"  "%s" "${SUMMARY% *} (devel)"
+printf -v "${THIS_VN}_CONTENTS" "%s" "\
+  usr/include/\
+  usr/lib/\
+  usr/share/\
+"
+printf -v "${THIS_VN}_REQUIRES" "%s" "\
+"
+
+################################
